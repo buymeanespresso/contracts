@@ -50,7 +50,7 @@ abstract contract Base7683 is ReentrancyGuard {
      */
     function createIntent(
         uint256 deadline,
-        bytes calldata preferences
+        bytes memory preferences
     ) public virtual nonReentrant returns (bytes32 intentId) {
         require(deadline > block.timestamp, "Intent deadline must be in future");
         

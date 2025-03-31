@@ -4,20 +4,24 @@ pragma solidity ^0.8.19;
 import "./Base7683.sol";
 import "../crosschain/HotShotVerifier.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title TipIntent
  * @dev Implementation of cross-chain tipping using ERC-7683 and HotShot
  */
 contract TipIntent is Base7683 {
+    using SafeERC20 for IERC20;
+    
     HotShotVerifier public immutable hotshot;
-    IERC20 public immutable tipToken;
     
     // Tip intent specific data
     struct TipData {
         address creator;
+        address tipper;
+        address token;
         uint256 amount;
-        address recipient;
+        string message;
         uint256 chainId;
     }
     
@@ -28,73 +32,74 @@ contract TipIntent is Base7683 {
     event TipIntentCreated(
         bytes32 indexed intentId,
         address indexed creator,
-        address indexed recipient,
+        address indexed tipper,
+        address token,
         uint256 amount,
+        string message,
         uint256 chainId
     );
     event TipExecuted(
         bytes32 indexed intentId,
         bytes32 messageId,
         address recipient,
+        address token,
         uint256 amount
     );
     
     /**
      * @dev Constructor
      * @param _hotshot Address of the HotShot verifier contract
-     * @param _tipToken Address of the ERC20 token used for tipping
      */
-    constructor(address _hotshot, address _tipToken) {
+    constructor(address _hotshot) {
         require(_hotshot != address(0), "Invalid HotShot address");
-        require(_tipToken != address(0), "Invalid token address");
         hotshot = HotShotVerifier(_hotshot);
-        tipToken = IERC20(_tipToken);
     }
     
     /**
      * @dev Creates a new tip intent
-     * @param recipient Address to receive the tip
+     * @param creator Address to receive the tip
+     * @param token Address of the token to tip
      * @param amount Amount of tokens to tip
-     * @param chainId Target chain ID for the tip
+     * @param message Optional message with the tip
      * @param deadline Timestamp after which the intent expires
-     * @param preferences Additional preferences for intent execution
      * @return intentId The ID of the created intent
      */
     function createTipIntent(
-        address recipient,
+        address creator,
+        address token,
         uint256 amount,
-        uint256 chainId,
-        uint256 deadline,
-        bytes calldata preferences
+        string memory message,
+        uint256 deadline
     ) external returns (bytes32 intentId) {
-        require(recipient != address(0), "Invalid recipient");
+        require(creator != address(0), "Invalid creator");
+        require(token != address(0), "Invalid token");
         require(amount > 0, "Amount must be greater than 0");
-        require(chainId != block.chainid, "Cannot tip on same chain");
-        require(chainId > 0, "Invalid chain ID");
         
-        // Create base intent
-        intentId = createIntent(deadline, preferences);
+        // Create base intent with empty preferences - convert to bytes
+        bytes memory emptyPreferences = new bytes(0);
+        intentId = createIntent(deadline, emptyPreferences);
         
         // Store tip specific data
         tipIntents[intentId] = TipData({
-            creator: msg.sender,
+            creator: creator,
+            tipper: msg.sender,
+            token: token,
             amount: amount,
-            recipient: recipient,
-            chainId: chainId
+            message: message,
+            chainId: block.chainid
         });
         
         // Lock tokens
-        require(
-            tipToken.transferFrom(msg.sender, address(this), amount),
-            "Token transfer failed"
-        );
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         
         emit TipIntentCreated(
             intentId,
+            creator,
             msg.sender,
-            recipient,
+            token,
             amount,
-            chainId
+            message,
+            block.chainid
         );
         
         return intentId;
@@ -118,18 +123,22 @@ contract TipIntent is Base7683 {
         
         // Get tip data
         TipData storage tipData = tipIntents[intentId];
-        require(tipData.creator != address(0), "Tip intent does not exist");
+        require(tipData.tipper != address(0), "Tip intent does not exist");
         
-        // Transfer tokens to recipient
-        require(
-            tipToken.transfer(tipData.recipient, tipData.amount),
-            "Token transfer failed"
-        );
+        // If called directly (not by solver), transfer to creator directly
+        // Otherwise, let the solver handle distribution (including fees)
+        if (msg.sender == tipData.creator || msg.sender == tipData.tipper) {
+            IERC20(tipData.token).safeTransfer(tipData.creator, tipData.amount);
+        } else {
+            // Approve the solver (msg.sender) to transfer the tokens
+            IERC20(tipData.token).safeApprove(msg.sender, tipData.amount);
+        }
         
         emit TipExecuted(
             intentId,
             messageId,
-            tipData.recipient,
+            tipData.creator,
+            tipData.token,
             tipData.amount
         );
     }
@@ -140,20 +149,28 @@ contract TipIntent is Base7683 {
      */
     function cancelTipIntent(bytes32 intentId) external {
         TipData storage tipData = tipIntents[intentId];
-        require(tipData.creator == msg.sender, "Not tip creator");
+        require(tipData.tipper == msg.sender, "Not tip creator");
         
         // Cancel base intent
         cancelIntent(intentId);
         
         // Refund tokens
-        require(
-            tipToken.transfer(msg.sender, tipData.amount),
-            "Token refund failed"
-        );
+        IERC20(tipData.token).safeTransfer(msg.sender, tipData.amount);
     }
     
     /**
      * @dev Gets tip intent data
+     * @param intentId The ID of the intent
+     * @return A TipData struct containing all tip details
+     */
+    function getTipIntent(bytes32 intentId) external view returns (
+        TipData memory
+    ) {
+        return tipIntents[intentId];
+    }
+    
+    /**
+     * @dev Gets tip data for solver
      * @param intentId The ID of the intent
      * @return creator The creator of the tip
      * @return amount The tip amount
@@ -170,7 +187,7 @@ contract TipIntent is Base7683 {
         return (
             tipData.creator,
             tipData.amount,
-            tipData.recipient,
+            tipData.creator, // Recipient is the creator
             tipData.chainId
         );
     }

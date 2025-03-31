@@ -1,12 +1,12 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
-import { EspressoTipping, EspressoCreator, AICreatorExtension } from "../typechain-types";
+import { EspressoCreator, AICreatorExtension, EspressoTipping } from "../typechain-types";
 
 describe("EspressoTipping", function () {
-  let espressoTipping: EspressoTipping;
   let espressoCreator: EspressoCreator;
   let aiExtension: AICreatorExtension;
+  let espressoTipping: EspressoTipping;
   let owner: SignerWithAddress;
   let creator1: SignerWithAddress;
   let creator2: SignerWithAddress;
@@ -21,21 +21,22 @@ describe("EspressoTipping", function () {
     [owner, creator1, creator2, tipper, developer, operator] = await ethers.getSigners();
     
     // Deploy EspressoCreator
-    const EspressoCreator = await ethers.getContractFactory("EspressoCreator");
-    espressoCreator = await EspressoCreator.deploy();
+    const EspressoCreatorFactory = await ethers.getContractFactory("EspressoCreator");
+    espressoCreator = await EspressoCreatorFactory.deploy() as unknown as EspressoCreator;
+    await espressoCreator.waitForDeployment();
     
     // Deploy AICreatorExtension
-    const AICreatorExtension = await ethers.getContractFactory("AICreatorExtension");
-    aiExtension = await AICreatorExtension.deploy(await espressoCreator.getAddress());
+    const AICreatorExtensionFactory = await ethers.getContractFactory("AICreatorExtension");
+    aiExtension = await AICreatorExtensionFactory.deploy(await espressoCreator.getAddress()) as unknown as AICreatorExtension;
+    await aiExtension.waitForDeployment();
     
     // Deploy EspressoTipping
-    const EspressoTipping = await ethers.getContractFactory("EspressoTipping");
-    espressoTipping = await EspressoTipping.deploy(
+    const EspressoTippingFactory = await ethers.getContractFactory("EspressoTipping");
+    espressoTipping = await EspressoTippingFactory.deploy(
       await espressoCreator.getAddress(),
-      await aiExtension.getAddress(),
-      500, // 5.00% developer fee
-      500  // 5.00% operator fee
-    );
+      await aiExtension.getAddress()
+    ) as unknown as EspressoTipping;
+    await espressoTipping.waitForDeployment();
     
     // Register creator1
     await espressoCreator.connect(creator1).createProfile(

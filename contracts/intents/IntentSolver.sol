@@ -6,16 +6,18 @@ import "../crosschain/HotShotVerifier.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title IntentSolver
  * @dev Contract for solving cross-chain tip intents
  */
 contract IntentSolver is ReentrancyGuard, Ownable {
+    using SafeERC20 for IERC20;
+    
     // Contracts
     TipIntent public immutable tipIntent;
     HotShotVerifier public immutable hotshot;
-    IERC20 public immutable tipToken;
     
     // Solver configuration
     uint256 public minTipAmount;
@@ -27,6 +29,7 @@ contract IntentSolver is ReentrancyGuard, Ownable {
         bytes32 indexed intentId,
         bytes32 messageId,
         address recipient,
+        address token,
         uint256 amount,
         uint256 fee
     );
@@ -40,7 +43,6 @@ contract IntentSolver is ReentrancyGuard, Ownable {
      * @dev Constructor
      * @param _tipIntent Address of the TipIntent contract
      * @param _hotshot Address of the HotShot verifier contract
-     * @param _tipToken Address of the ERC20 token used for tipping
      * @param _minTipAmount Minimum tip amount that can be solved
      * @param _maxTipAmount Maximum tip amount that can be solved
      * @param _solverFee Solver fee in basis points
@@ -48,19 +50,16 @@ contract IntentSolver is ReentrancyGuard, Ownable {
     constructor(
         address _tipIntent,
         address _hotshot,
-        address _tipToken,
         uint256 _minTipAmount,
         uint256 _maxTipAmount,
         uint256 _solverFee
     ) {
         require(_tipIntent != address(0), "Invalid TipIntent address");
         require(_hotshot != address(0), "Invalid HotShot address");
-        require(_tipToken != address(0), "Invalid token address");
         require(_solverFee <= 1000, "Fee too high"); // Max 10%
         
         tipIntent = TipIntent(_tipIntent);
         hotshot = HotShotVerifier(_hotshot);
-        tipToken = IERC20(_tipToken);
         minTipAmount = _minTipAmount;
         maxTipAmount = _maxTipAmount;
         solverFee = _solverFee;
@@ -83,6 +82,10 @@ contract IntentSolver is ReentrancyGuard, Ownable {
             uint256 chainId
         ) = tipIntent.getTipData(intentId);
         
+        // Get token from the tip intent
+        TipIntent.TipData memory tipData = tipIntent.getTipIntent(intentId);
+        address token = tipData.token;
+        
         require(amount >= minTipAmount, "Tip amount too low");
         require(amount <= maxTipAmount, "Tip amount too high");
         require(chainId == block.chainid, "Wrong chain");
@@ -91,23 +94,21 @@ contract IntentSolver is ReentrancyGuard, Ownable {
         uint256 fee = (amount * solverFee) / 10000;
         uint256 recipientAmount = amount - fee;
         
-        // Execute the tip intent
+        // Execute the tip intent which will approve this contract to transfer tokens
         tipIntent.executeTipIntent(intentId, messageId);
         
-        // Transfer tokens
-        require(
-            tipToken.transfer(recipient, recipientAmount),
-            "Recipient transfer failed"
-        );
-        require(
-            tipToken.transfer(owner(), fee),
-            "Fee transfer failed"
-        );
+        // Transfer tokens from the TipIntent contract
+        IERC20(token).safeTransferFrom(address(tipIntent), address(this), amount);
+        
+        // Distribute tokens with fee
+        IERC20(token).safeTransfer(recipient, recipientAmount);
+        IERC20(token).safeTransfer(owner(), fee);
         
         emit IntentSolved(
             intentId,
             messageId,
             recipient,
+            token,
             recipientAmount,
             fee
         );
@@ -143,9 +144,6 @@ contract IntentSolver is ReentrancyGuard, Ownable {
         IERC20 token,
         uint256 amount
     ) external onlyOwner {
-        require(
-            token.transfer(owner(), amount),
-            "Token transfer failed"
-        );
+        token.safeTransfer(owner(), amount);
     }
 } 
