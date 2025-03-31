@@ -9,42 +9,45 @@ import * as dotenv from "dotenv";
 
 dotenv.config();
 
-// Ensure we have all the environment variables we need
-const privateKey: string = process.env.PRIVATE_KEY || "";
+// Get private key from environment variable
+const PRIVATE_KEY = process.env.PRIVATE_KEY || "0000000000000000000000000000000000000000000000000000000000000000";
+const ARBITRUM_RPC_URL = process.env.ARBITRUM_RPC_URL || "https://arbitrum-sepolia.testnet.espresso.network/";
+const ROLLUP_RPC_URL = process.env.ROLLUP_RPC_URL || "http://34.31.168.162:8547";
+
+// Restore the arbiscanApiKey variable but make it optional
 const arbiscanApiKey: string = process.env.ARBISCAN_API_KEY || "";
 
-if (!privateKey) {
-  throw new Error("Please set your PRIVATE_KEY in a .env file");
-}
-
-if (!arbiscanApiKey) {
+// Add the condition for verification
+if (!arbiscanApiKey && process.env.VERIFY === "true") {
   throw new Error("Please set your ARBISCAN_API_KEY in a .env file");
 }
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.24",
+    version: "0.8.19",
     settings: {
       optimizer: {
         enabled: true,
         runs: 200
       },
       viaIR: true
-    },
+    }
   },
   networks: {
     hardhat: {
-      chainId: 1337
+      chainId: 31337,
     },
-    arbitrumSepolia: {
-      url: "https://sepolia-rollup.arbitrum.io/rpc",
+    "arbitrum-sepolia": {
+      url: ARBITRUM_RPC_URL,
+      accounts: [PRIVATE_KEY],
       chainId: 421614,
-      accounts: [privateKey]
     },
-    espressoRollup: {
-      url: process.env.ESPRESSO_ROLLUP_RPC_URL || "http://your-instance-ip:8547",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-    }
+    "espresso-rollup": {
+      url: ROLLUP_RPC_URL,
+      accounts: [PRIVATE_KEY],
+      chainId: 4371337,
+      timeout: 120000, // 2 minutes
+    },
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS !== undefined,
@@ -70,7 +73,13 @@ const config: HardhatUserConfig = {
   typechain: {
     outDir: "typechain-types",
     target: "ethers-v6"
-  }
+  },
+  paths: {
+    sources: "./contracts",
+    tests: "./test",
+    cache: "./cache",
+    artifacts: "./artifacts"
+  },
 };
 
 export default config;

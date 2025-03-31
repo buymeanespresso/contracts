@@ -1,68 +1,77 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./Base7683.sol";
 import "../crosschain/HotShotVerifier.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title TipIntent
- * @dev Implementation of cross-chain tipping using ERC-7683 and HotShot
+ * @dev Contract for creating and executing cross-chain tip intents
  */
-contract TipIntent is Base7683 {
+contract TipIntent is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
     
-    HotShotVerifier public immutable hotshot;
-    
-    // Tip intent specific data
+    // Structure to store tip intent data
     struct TipData {
-        address creator;
-        address tipper;
-        address token;
-        uint256 amount;
-        string message;
-        uint256 chainId;
+        address creator;      // The creator who will receive the tip
+        address token;        // The token to be tipped
+        uint256 amount;       // The amount to tip
+        uint256 deadline;     // The deadline after which the tip is invalid
+        bool isExecuted;      // Whether the tip has been executed
+        uint256 timestamp;    // When the tip was created
+        string message;       // Optional message from the tipper
     }
     
     // Mapping from intent ID to tip data
     mapping(bytes32 => TipData) public tipIntents;
     
+    // Mapping from message ID to intent ID to track execution status
+    mapping(bytes32 => bytes32) public messageToIntent;
+    
+    // Contract dependencies
+    HotShotVerifier public immutable hotshot;
+    
     // Events
     event TipIntentCreated(
         bytes32 indexed intentId,
         address indexed creator,
-        address indexed tipper,
-        address token,
+        address indexed token,
         uint256 amount,
-        string message,
-        uint256 chainId
+        uint256 deadline,
+        string message
     );
-    event TipExecuted(
+    
+    event TipIntentExecuted(
         bytes32 indexed intentId,
-        bytes32 messageId,
-        address recipient,
-        address token,
-        uint256 amount
+        bytes32 indexed messageId,
+        address executor
+    );
+    
+    event TipIntentRefunded(
+        bytes32 indexed intentId,
+        address indexed refundRecipient
     );
     
     /**
      * @dev Constructor
      * @param _hotshot Address of the HotShot verifier contract
      */
-    constructor(address _hotshot) {
+    constructor(address _hotshot) Ownable() {
         require(_hotshot != address(0), "Invalid HotShot address");
         hotshot = HotShotVerifier(_hotshot);
     }
     
     /**
      * @dev Creates a new tip intent
-     * @param creator Address to receive the tip
-     * @param token Address of the token to tip
-     * @param amount Amount of tokens to tip
-     * @param message Optional message with the tip
-     * @param deadline Timestamp after which the intent expires
-     * @return intentId The ID of the created intent
+     * @param creator The creator who will receive the tip
+     * @param token The token to be tipped
+     * @param amount The amount to tip
+     * @param message Optional message from the tipper
+     * @param deadline The deadline after which the tip is invalid
+     * @return intentId The generated intent ID
      */
     function createTipIntent(
         address creator,
@@ -70,112 +79,106 @@ contract TipIntent is Base7683 {
         uint256 amount,
         string memory message,
         uint256 deadline
-    ) external returns (bytes32 intentId) {
-        require(creator != address(0), "Invalid creator");
-        require(token != address(0), "Invalid token");
+    ) external nonReentrant returns (bytes32 intentId) {
+        require(creator != address(0), "Invalid creator address");
+        require(token != address(0), "Invalid token address");
         require(amount > 0, "Amount must be greater than 0");
+        require(deadline > block.timestamp, "Deadline must be in the future");
         
-        // Create base intent with empty preferences - convert to bytes
-        bytes memory emptyPreferences = new bytes(0);
-        intentId = createIntent(deadline, emptyPreferences);
+        // Transfer tokens from sender to this contract
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         
-        // Store tip specific data
+        // Generate unique intent ID
+        intentId = keccak256(
+            abi.encodePacked(
+                creator,
+                token,
+                amount,
+                deadline,
+                block.timestamp,
+                msg.sender
+            )
+        );
+        
+        // Store tip intent data
         tipIntents[intentId] = TipData({
             creator: creator,
-            tipper: msg.sender,
             token: token,
             amount: amount,
-            message: message,
-            chainId: block.chainid
+            deadline: deadline,
+            isExecuted: false,
+            timestamp: block.timestamp,
+            message: message
         });
-        
-        // Lock tokens
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         
         emit TipIntentCreated(
             intentId,
             creator,
-            msg.sender,
             token,
             amount,
-            message,
-            block.chainid
+            deadline,
+            message
         );
         
         return intentId;
     }
     
     /**
-     * @dev Executes a tip intent with HotShot confirmation
-     * @param intentId The ID of the intent to execute
+     * @dev Executes a tip intent based on a verified cross-chain message
+     * @param intentId The intent ID to execute
      * @param messageId The cross-chain message ID from HotShot
      */
     function executeTipIntent(
         bytes32 intentId,
         bytes32 messageId
-    ) external {
-        // Verify HotShot confirmation
-        uint8 status = hotshot.verifyConfirmation(messageId);
-        require(status == hotshot.STATUS_CONFIRMED(), "Message not confirmed");
+    ) external nonReentrant {
+        require(messageId != bytes32(0), "Invalid message ID");
+        require(intentId != bytes32(0), "Invalid intent ID");
         
-        // Execute base intent
-        executeIntent(intentId, messageId);
-        
-        // Get tip data
         TipData storage tipData = tipIntents[intentId];
-        require(tipData.tipper != address(0), "Tip intent does not exist");
+        require(!tipData.isExecuted, "Intent already executed");
+        require(block.timestamp <= tipData.deadline, "Intent expired");
         
-        // If called directly (not by solver), transfer to creator directly
-        // Otherwise, let the solver handle distribution (including fees)
-        if (msg.sender == tipData.creator || msg.sender == tipData.tipper) {
-            IERC20(tipData.token).safeTransfer(tipData.creator, tipData.amount);
-        } else {
-            // Approve the solver (msg.sender) to transfer the tokens
-            IERC20(tipData.token).safeApprove(msg.sender, tipData.amount);
-        }
+        // Verify that the message has been confirmed via HotShot
+        uint8 confirmationStatus = hotshot.verifyConfirmation(messageId);
+        require(confirmationStatus == 1, "Message not confirmed");
+        require(messageToIntent[messageId] == bytes32(0), "Message already used");
         
-        emit TipExecuted(
-            intentId,
-            messageId,
-            tipData.creator,
-            tipData.token,
-            tipData.amount
-        );
+        // Mark the intent as executed
+        tipData.isExecuted = true;
+        messageToIntent[messageId] = intentId;
+        
+        emit TipIntentExecuted(intentId, messageId, msg.sender);
+        
+        // Approve the solver to transfer tokens
+        IERC20(tipData.token).approve(msg.sender, tipData.amount);
     }
     
     /**
-     * @dev Cancels a tip intent and refunds tokens
-     * @param intentId The ID of the intent to cancel
+     * @dev Refunds a tip intent if it has expired
+     * @param intentId The intent ID to refund
      */
-    function cancelTipIntent(bytes32 intentId) external {
+    function refundTipIntent(bytes32 intentId) external nonReentrant {
         TipData storage tipData = tipIntents[intentId];
-        require(tipData.tipper == msg.sender, "Not tip creator");
+        require(!tipData.isExecuted, "Intent already executed");
+        require(block.timestamp > tipData.deadline, "Intent not yet expired");
         
-        // Cancel base intent
-        cancelIntent(intentId);
+        // Mark as executed to prevent double-refund
+        tipData.isExecuted = true;
         
-        // Refund tokens
+        // Transfer tokens back to the sender
         IERC20(tipData.token).safeTransfer(msg.sender, tipData.amount);
+        
+        emit TipIntentRefunded(intentId, msg.sender);
     }
     
     /**
-     * @dev Gets tip intent data
-     * @param intentId The ID of the intent
-     * @return A TipData struct containing all tip details
-     */
-    function getTipIntent(bytes32 intentId) external view returns (
-        TipData memory
-    ) {
-        return tipIntents[intentId];
-    }
-    
-    /**
-     * @dev Gets tip data for solver
-     * @param intentId The ID of the intent
-     * @return creator The creator of the tip
+     * @dev Gets tip data for a given intent ID
+     * @param intentId The intent ID
+     * @return creator The creator address
      * @return amount The tip amount
-     * @return recipient The tip recipient
-     * @return chainId The target chain ID
+     * @return recipient The recipient address (same as creator)
+     * @return chainId The chain ID where this contract is deployed
      */
     function getTipData(bytes32 intentId) external view returns (
         address creator,
@@ -184,11 +187,24 @@ contract TipIntent is Base7683 {
         uint256 chainId
     ) {
         TipData storage tipData = tipIntents[intentId];
+        require(tipData.timestamp > 0, "Intent does not exist");
+        
         return (
             tipData.creator,
             tipData.amount,
-            tipData.creator, // Recipient is the creator
-            tipData.chainId
+            tipData.creator, // Recipient is the same as creator
+            block.chainid
         );
+    }
+    
+    /**
+     * @dev Gets full tip intent data
+     * @param intentId The intent ID
+     * @return The complete tip intent data structure
+     */
+    function getTipIntent(bytes32 intentId) external view returns (TipData memory) {
+        TipData storage tipData = tipIntents[intentId];
+        require(tipData.timestamp > 0, "Intent does not exist");
+        return tipData;
     }
 } 

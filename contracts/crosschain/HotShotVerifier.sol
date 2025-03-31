@@ -3,97 +3,53 @@ pragma solidity ^0.8.19;
 
 /**
  * @title HotShotVerifier
- * @dev Contract for verifying cross-chain confirmations using Espresso's HotShot protocol
+ * @dev Interface for verifying messages through the HotShot verification system
  */
-interface IHotShotLightClient {
-    function isConfirmed(bytes32 messageId) external view returns (bool);
-    function getConfirmationStatus(bytes32 messageId) external view returns (uint8);
-}
-
-contract HotShotVerifier {
-    IHotShotLightClient public immutable hotshot;
+interface HotShotVerifier {
+    /**
+     * @dev Message confirmation status codes
+     * 0: PENDING - Message is not yet confirmed
+     * 1: CONFIRMED - Message is confirmed
+     * 2: REJECTED - Message is rejected
+     */
     
-    // Status codes for message confirmations
-    uint8 public constant STATUS_PENDING = 0;
-    uint8 public constant STATUS_CONFIRMED = 1;
-    uint8 public constant STATUS_REJECTED = 2;
-    
-    // Events
+    /**
+     * @dev Event emitted when a message is confirmed
+     * @param messageId The ID of the confirmed message
+     */
     event MessageConfirmed(bytes32 indexed messageId);
-    event MessageRejected(bytes32 indexed messageId);
     
     /**
-     * @dev Constructor to set the HotShot light client address
-     * @param _hotshot Address of the HotShot light client contract
+     * @dev Event emitted when a message is rejected
+     * @param messageId The ID of the rejected message
+     * @param reason The reason for rejection
      */
-    constructor(address _hotshot) {
-        require(_hotshot != address(0), "Invalid HotShot client address");
-        hotshot = IHotShotLightClient(_hotshot);
-    }
+    event MessageRejected(bytes32 indexed messageId, string reason);
     
     /**
-     * @dev Verify a cross-chain message confirmation
+     * @dev Generates a message ID from the given message data
+     * @param data The raw message data
+     * @return messageId The generated message ID
+     */
+    function generateMessageId(bytes calldata data) external pure returns (bytes32 messageId);
+    
+    /**
+     * @dev Verifies the confirmation status of a message
      * @param messageId The ID of the message to verify
-     * @return status The confirmation status of the message
+     * @return status The confirmation status (0: PENDING, 1: CONFIRMED, 2: REJECTED)
      */
-    function verifyConfirmation(bytes32 messageId) external view returns (uint8) {
-        try hotshot.isConfirmed(messageId) returns (bool confirmed) {
-            if (confirmed) {
-                return STATUS_CONFIRMED;
-            }
-        } catch {
-            // If isConfirmed call fails, try getConfirmationStatus
-        }
-        
-        try hotshot.getConfirmationStatus(messageId) returns (uint8 status) {
-            return status;
-        } catch {
-            // If both calls fail, return PENDING by default for safety
-            return STATUS_PENDING;
-        }
-    }
+    function verifyConfirmation(bytes32 messageId) external view returns (uint8 status);
     
     /**
-     * @dev Verify multiple cross-chain message confirmations
-     * @param messageIds Array of message IDs to verify
-     * @return statuses Array of confirmation statuses
+     * @dev Confirms a message (typically called by an authorized verifier)
+     * @param messageId The ID of the message to confirm
      */
-    function verifyConfirmationBatch(bytes32[] calldata messageIds) 
-        external 
-        view 
-        returns (uint8[] memory statuses) 
-    {
-        statuses = new uint8[](messageIds.length);
-        for (uint256 i = 0; i < messageIds.length; i++) {
-            statuses[i] = this.verifyConfirmation(messageIds[i]);
-        }
-        return statuses;
-    }
+    function confirmMessage(bytes32 messageId) external;
     
     /**
-     * @dev Generate a deterministic message ID from intent parameters
-     * @param sender The address that initiated the cross-chain transaction
-     * @param recipient The address that will receive the funds
-     * @param token The token address being transferred
-     * @param amount The amount of tokens being transferred
-     * @param nonce A unique nonce to prevent replay attacks
-     * @return The generated message ID
+     * @dev Rejects a message (typically called by an authorized verifier)
+     * @param messageId The ID of the message to reject
+     * @param reason The reason for rejection
      */
-    function generateMessageId(
-        address sender,
-        address recipient,
-        address token,
-        uint256 amount,
-        uint256 nonce
-    ) external pure returns (bytes32) {
-        return keccak256(
-            abi.encodePacked(
-                sender,
-                recipient,
-                token,
-                amount,
-                nonce
-            )
-        );
-    }
+    function rejectMessage(bytes32 messageId, string calldata reason) external;
 } 
