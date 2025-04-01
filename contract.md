@@ -10,7 +10,9 @@ The platform consists of the following core contracts:
 2. `IntentSolver` - Processes and executes tip intents with HotShot verification
 3. `EspressoCreatorRegistry` - Manages creator profiles and verification
 4. `HotShotVerifier` - Interfaces with Espresso Network for cross-chain message verification
-5. Supporting contracts - Mock implementations for testing
+5. `EspressoMembership` - Manages membership tiers and subscriptions for creators
+6. `AICreatorExtension` - Supports AI agent profiles with revenue splitting
+7. Supporting contracts - Mock implementations for testing
 
 ### Contract Relationships
 
@@ -26,18 +28,18 @@ The platform consists of the following core contracts:
                           │   IntentSolver  ◄──────────► EspressoCreatorRegistry
                           │                 │          │                      │
                           └────────┬────────┘          └──────────────────────┘
-                                   │
-                                   │ executes
-                                   │
-                          ┌────────▼────────┐
-                          │    TipIntent    │
-                          └────────┬────────┘
-                                   │
-                                   │ uses
-                                   │
-                          ┌────────▼────────┐
-                          │    ERC20/ETH    │
-                          └─────────────────┘
+                                   │                             │
+                                   │ executes                    │ extends
+                                   │                             │
+                          ┌────────▼────────┐          ┌─────────▼──────────┐
+                          │    TipIntent    │          │  EspressoMembership │
+                          └────────┬────────┘          └─────────┬──────────┘
+                                   │                             │
+                                   │ uses                        │ extends
+                                   │                             │
+                          ┌────────▼────────┐          ┌─────────▼──────────┐
+                          │    ERC20/ETH    │          │  AICreatorExtension │
+                          └─────────────────┘          └────────────────────┘
 ```
 
 ## TipIntent Contract
@@ -157,6 +159,96 @@ struct CreatorProfile {
 - Profile update validation checks
 - Extension management controls
 
+## EspressoMembership Contract
+
+The `EspressoMembership` contract enables subscription-based membership tiers for creators, allowing for recurring revenue streams.
+
+### Key Features
+
+- **Tier Management**: Allows creators to create and manage multiple membership tiers
+- **Customizable Pricing**: Flexible pricing models for different tiers
+- **Duration Control**: Setting membership periods (days, months, years)
+- **Benefit Tracking**: Listing specific benefits for each tier
+- **Subscription Management**: Tracking active memberships and renewals
+
+### Data Structures
+
+```solidity
+struct MembershipTier {
+    string name;           // Tier name (e.g., "Gold", "Premium")
+    string description;    // Detailed description
+    uint256 price;         // Price in wei
+    uint256 duration;      // Duration in seconds
+    bool isActive;         // Whether the tier is active
+    string[] benefits;     // Array of benefits for this tier
+}
+```
+
+### Core Functions
+
+- `createTier(string name, string description, uint256 price, uint256 duration, string[] benefits)`: Creates a new membership tier.
+- `updateTier(uint256 tierId, string name, string description, uint256 price, uint256 duration, string[] benefits)`: Updates an existing tier.
+- `purchaseMembership(address creator, uint256 tierId)`: Allows users to purchase a membership subscription.
+- `cancelMembership(address creator, uint256 tierId)`: Cancels an active membership.
+- `getTier(address creator, uint256 tierId)`: Retrieves information about a specific tier.
+- `getMembershipStatus(address member, address creator, uint256 tierId)`: Checks if a user has an active subscription to a tier.
+- `getCreatorTiers(address creator)`: Lists all tiers created by a specific creator.
+
+### Security Mechanisms
+
+- Verification that subscribers have paid the correct amount
+- Expiration date tracking using timestamps
+- Secure payment handling with reentrancy protection
+- Extension control for tier creators
+
+## AICreatorExtension Contract
+
+The `AICreatorExtension` contract provides support for AI agents as first-class creators with automated revenue splitting between developers and operators.
+
+### Key Features
+
+- **Agent Registration**: Register AI agents with different autonomy levels
+- **Revenue Splitting**: Automated distribution of tips between developers and operators
+- **Verification System**: Official verification of trusted AI agents
+- **Capability Tracking**: Stores information about AI training and capabilities
+
+### Data Structures
+
+```solidity
+enum AgentType {
+    NotAgent,
+    Autonomous,        // Fully automated with no human intervention
+    SemiAutonomous,    // Partly automated with human oversight
+    Controlled         // Primarily controlled by humans
+}
+
+struct AgentInfo {
+    AgentType agentType;
+    address developer;                 // Developer who created the AI
+    address operator;                  // Entity operating the infrastructure
+    uint256 revenueSplitDeveloper;     // Percentage in basis points (e.g., 5000 = 50%)
+    string trainingInfo;               // Information about how the AI was trained
+    string capabilities;               // What the AI can do
+    bool verified;                     // Verification status
+}
+```
+
+### Core Functions
+
+- `registerAsAgent(AgentType agentType, address developer, address operator, uint256 revenueSplitDeveloper, string trainingInfo, string capabilities)`: Registers an account as an AI agent.
+- `updateAgentInfo(AgentType agentType, address developer, address operator, uint256 revenueSplitDeveloper, string trainingInfo, string capabilities)`: Updates existing agent information.
+- `getAgentInfo(address agentAddress)`: Returns complete agent information.
+- `isAgent(address user)`: Checks if an address is registered as an AI agent.
+- `verifyAgent(address agent, bool verified)`: Updates the verification status of an agent (admin only).
+
+### Security Mechanisms
+
+- Validation of revenue split percentages
+- Address validation for developers and operators
+- Verification system to prevent impersonation
+- Only registered creators can become agents
+- Owner-controlled verification system
+
 ## HotShotVerifier Contract
 
 The `HotShotVerifier` contract interfaces with the Espresso Network to verify cross-chain messages.
@@ -257,6 +349,8 @@ The contracts implement several gas optimization strategies:
 4. **Input Validation**: All function inputs are validated before use
 5. **Fee Limits**: Solver fees are capped to prevent abuse
 6. **Emergency Controls**: Pausing and fund recovery mechanisms for crisis situations
+7. **Revenue Split Protection**: AI agent revenue splits are validated to always add up to 100%
+8. **Membership Verification**: Secure tracking of membership expirations using timestamps
 
 ## Possible Extensions
 
@@ -264,11 +358,11 @@ The architecture supports several possible extensions:
 
 1. **ETH Tipping**: Adding native ETH support alongside ERC20 tokens
 2. **Multiple Solvers**: Allowing competition between solvers for improved efficiency
-3. **Creator Subscriptions**: Enabling recurring tips
-4. **Tiered Tipping**: Supporting predefined tip tiers with special benefits
+3. **Advanced Membership Features**: Token-gated access and automated renewals
+4. **AI Agent Marketplace**: Platform for discovering and verifying AI agents
 5. **Tip Splitting**: Dividing tips between multiple creators
 6. **Reputation System**: Building reputation for creators and tippers
 
 ## Conclusion
 
-The Buy Me An Espresso platform demonstrates a secure, efficient implementation of cross-chain tipping using Arbitrum Orbit and Espresso Network. The architecture prioritizes security, usability, and extensibility while maintaining gas efficiency and cross-chain compatibility.
+The Buy Me An Espresso platform demonstrates a secure, efficient implementation of cross-chain tipping using Arbitrum Orbit and Espresso Network. The architecture prioritizes security, usability, and extensibility while maintaining gas efficiency and cross-chain compatibility. With the addition of membership systems and AI agent support, the platform provides a comprehensive monetization solution for all types of creators.

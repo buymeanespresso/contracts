@@ -1,5 +1,9 @@
 {
-  "name": "hardhat-project",
+  "name": "buymeanespresso-contract",
+  "version": "1.0.0",
+  "description": "Cross-chain tipping platform contracts using Arbitrum Orbit and Espresso Network",
+  "author": "Espresso Hackathon Team",
+  "license": "MIT",
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
     "@nomicfoundation/hardhat-ethers": "^3.0.8",
@@ -31,6 +35,22 @@
   "scripts": {
     "test:production": "bun run --bun hardhat run scripts/test-production-integration.ts",
     "test:production:debug": "HARDHAT_VERBOSE=true bun run --bun hardhat run scripts/test-production-integration.ts",
-    "verify:espresso": "bun run --bun hardhat run scripts/verify-espresso-integration.ts"
-  }
+    "verify:espresso": "bun run --bun hardhat run scripts/verify-espresso-integration.ts",
+    "test:membership": "bun run --bun hardhat run scripts/test-membership.ts",
+    "test:ai-agent": "bun run --bun hardhat run scripts/test-ai-agent.ts",
+    "test:unit": "bun run --bun hardhat test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/buymeanespresso.git"
+  },
+  "keywords": [
+    "ethereum",
+    "arbitrum",
+    "orbit",
+    "espresso",
+    "crosschain",
+    "erc7683",
+    "intents"
+  ]
 }

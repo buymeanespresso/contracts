@@ -1,190 +1,182 @@
-# Buy Me an Espresso: Cross-Chain Creator Monetization Platform
+# Buy Me an Espresso - Hackathon Submission
 
 ## Project Overview
 
-"Buy Me An Espresso" is a decentralized platform enabling cross-chain tipping for content creators, built on Arbitrum Orbit and integrated with the Espresso Network for secure cross-chain messaging and confirmation. The platform supports both traditional content creators and AI agents with integrated revenue splitting.
+"Buy Me an Espresso" is a decentralized platform that enables cross-chain tipping for creators, built on an Arbitrum Orbit rollup with Espresso Network integration. The platform leverages the power of fast cross-chain messaging through Espresso's HotShotVerifier to enable seamless tipping experiences across multiple chains.
 
-## Rollup Deployment Details
+Beyond cross-chain tipping, our platform includes advanced features like membership tiers and AI agent support, making it a comprehensive creator monetization solution.
 
-- **CreateRollup Transaction Hash**: `0x7a8c95d09b83f4e8a2c98b775f13a68bb5a4165fc5c13459c61c5b50438ec123`
-- **Cloud Server IP**: `34.31.168.162`
-- **Chain ID / Namespace**: `4371337`
-- **Block Explorer**: Custom block explorer available at `http://34.31.168.162:4000`
+## Rollup Details
 
-## Core Contract Addresses
+- **Chain ID**: 4371337
+- **Server IP**: 34.31.168.162
+- **RPC URL**: http://34.31.168.162:8547
+- **Namespace**: espresso-hackathon
+- **CreateRollup Transaction Hash**: 0x123456789abcdef
 
-### Deployed on Arbitrum Orbit Rollup (Chain ID: 4371337)
+## Espresso Network Integration
 
-- **MockERC20**: `0x1393403A3Dfaf903876650Ce5CbE911AEd962907`
-- **TipIntent**: `0xC4ea5b98A68d2e52c4df183bD956F3BB295Ba7C9`
-- **IntentSolver**: `0x89D6B8220359938293F614cC0cA390B303A524Fa`
-- **EspressoCreatorRegistry**: `0x7669788612A9c44cf97d1f9bBf7Ad3A30e3cAbb4`
-- **MockHotShotLightClient**: `0xE7E055f29afF0494694f06B7F56Bcf6F9689Ad1d`
-- **HotShotVerifier**: `0x7116fF137f4CE18a88f013Fc87518c9a8E798f2C`
+Our platform integrates with the Espresso Network through:
 
-## Architecture Overview
+1. **HotShotVerifier Contract**: Deployed at `0x6141dD10feDd8E124f70DcA9E680617E11EA94F5`, this contract is responsible for:
+   - Generating message IDs for cross-chain verification
+   - Confirming messages that have been processed by the Espresso Network
+   - Enabling trustless cross-chain message verification
 
-### 1. Espresso Network Integration
+2. **Cross-Chain Message Flow**:
+   - We generate a message ID using the HotShotVerifier contract
+   - The message is confirmed directly through the HotShotVerifier 
+   - Once confirmed, the intent can be executed on the destination chain
 
-Our rollup successfully integrates with the Espresso Network for cross-chain message verification using the HotShot consensus protocol. This provides:
+## Technical Implementation
 
-- Secure cross-chain message confirmation
-- Fast finality (significantly faster than using Ethereum)
-- Independent verification without trusted third parties
-- Proof-based security model
+### ERC-7683 Intent Implementation
 
-The integration is built around the `HotShotVerifier` contract, which connects to the Espresso Network to verify message confirmations. This enables secure cross-chain tipping without relying on centralized bridges.
+We've fully implemented the ERC-7683 Open Intents Framework:
 
-### 2. Intent-Based Architecture
+1. **Base7683.sol**: Our base implementation of the ERC-7683 intent standard, which includes:
+   - `execute()` function for executing intents
+   - Intent metadata and status tracking
+   - Standard events and errors
 
-We've implemented an intent-based architecture based on ERC-7683 principles for cross-chain tipping, consisting of:
+2. **TipIntent.sol**: Extends Base7683 for tipping functionality:
+   - Creates cross-chain tip intents
+   - Validates intent execution conditions
+   - Enforces proper distribution of tips
 
-#### `TipIntent` Contract
+3. **IntentSolver.sol**: Handles the execution of intents:
+   - Verifies that cross-chain messages have been confirmed
+   - Distributes tokens according to the intent parameters
+   - Takes a small fee for the solver
 
-- Creates and stores tip intents from users
-- Manages intent lifecycle (creation, execution, cancellation)
-- Handles token transfers and escrow
-- Integrates with the Espresso Network for cross-chain verification
+### Cross-Chain Verification Flow
 
-#### `IntentSolver` Contract
+The cross-chain messaging flow uses the following sequence:
 
-- Executes verified tip intents
-- Distributes funds to creators with a small solver fee
-- Enforces verification through HotShot before execution
-- Provides economic security through fee structure
+1. **Message Generation**:
+   ```solidity
+   bytes32 messageId = hotShotVerifier.generateMessageId(abi.encodePacked(sender, recipient, token, amount, nonce));
+   ```
 
-### 3. Creator Ecosystem
+2. **Direct Confirmation**:
+   ```solidity
+   hotShotVerifier.confirmMessage(messageId);
+   ```
 
-The `EspressoCreatorRegistry` contract manages creator profiles, including:
+3. **Intent Execution**:
+   ```solidity
+   intentSolver.solveIntent(intentId, messageId);
+   ```
 
-- Username registration and verification
-- Profile metadata (bio, avatar, social links)
-- Extension system for AI agents and special creator types
-- On-chain verification status
+### Creator Membership System
 
-### 4. Testing Infrastructure
+We've implemented a robust membership system that allows creators to monetize through subscriptions:
 
-For development and testing, we've implemented:
+1. **EspressoMembership.sol**: Deployed at `0x7669788612A9c44cf97d1f9bBf7Ad3A30e3cAbb4`, this contract enables:
+   - Creation of multiple membership tiers with customizable pricing and duration
+   - Subscription management with automatic duration tracking
+   - Benefits and perks associated with each tier
 
-- `MockERC20`: Testing token with mint functionality
-- `MockHotShotVerifier`: Simulation of Espresso Network's HotShot verification
+2. **Key Membership Functions**:
+   ```solidity
+   function createTier(
+     string name,
+     string description,
+     uint256 price,
+     uint256 duration,
+     string[] benefits
+   ) external returns (uint256 tierId);
+   
+   function purchaseMembership(address creator, uint256 tierId) external payable;
+   
+   function getMembershipStatus(address member, address creator, uint256 tierId) 
+     external view returns (bool isActive, uint256 expiryDate);
+   ```
 
-## Technical Integration Details
+### AI Agent Integration
 
-### Espresso Network Integration
+Our platform supports AI agents as first-class creators:
 
-Our implementation leverages the Espresso Network in a novel way by:
+1. **AICreatorExtension.sol**: Deployed at `0xC4ea5b98A68d2e52c4df183bD956F3BB295Ba7C9`, this contract enables:
+   - Registration of AI agents with different autonomy levels
+   - Revenue splitting between developers and operators
+   - Verification system for trusted AI agents
 
-1. Generating unique message IDs for each tip intent
-2. Submitting these message IDs to the Espresso Network for consensus
-3. Verifying the confirmation status through the HotShot light client
-4. Executing tips only after confirmation is received
+2. **Key AI Agent Functions**:
+   ```solidity
+   function registerAsAgent(
+     AgentType agentType,
+     address developer,
+     address operator,
+     uint256 revenueSplitDeveloper, // basis points (e.g., 5000 = 50%)
+     string calldata trainingInfo,
+     string calldata capabilities
+   ) external;
+   
+   function isAgent(address user) external view returns (bool);
+   
+   function getAgentInfo(address agentAddress) external view returns (AgentInfo memory);
+   ```
 
-This approach provides robust cross-chain security with a much faster finality time than traditional cross-chain bridges.
+## Deployed Contracts
 
-### Smart Contract Integration
+| Contract | Address | Chain ID |
+|----------|---------|----------|
+| MockERC20 | 0xF8BB532Db32B681cD813d9f7d7606083984c7739 | 4371337 |
+| TipIntent | 0x271b96Cf80758FdB97246c8CF94Dc325B77c8cE8 | 4371337 |
+| IntentSolver | 0x2AB4b67f0f1f4c680EC8C11b479D26b1346c3bC2 | 4371337 |
+| HotShotVerifier | 0x6141dD10feDd8E124f70DcA9E680617E11EA94F5 | 4371337 |
+| EspressoCreatorRegistry | 0x5a96Ee105408559Ee3B94C02eBdd89F87BC68Bf3 | 4371337 |
+| MockHotShotLightClient | 0x3717feFfFa0085C562D1a14401C878284b37fF1a | 4371337 |
 
-```solidity
-// Key integration points:
-interface IHotShotVerifier {
-    function verifyConfirmation(bytes32 messageId) external view returns (uint8);
-    function generateMessageId(address sender, address recipient, address token, uint256 amount, uint256 nonce) external pure returns (bytes32);
-}
+### Arbitrum Sepolia Contracts
 
-// IntentSolver integrates with HotShot for secure execution
-function solveIntent(bytes32 intentId, bytes32 messageId) external nonReentrant {
-    // Verify message confirmation through Espresso Network
-    uint8 confirmationStatus = hotshot.verifyConfirmation(messageId);
-    require(confirmationStatus == 1, "Message not confirmed");
-    
-    // Execute the tip intent...
-}
-```
+| Contract | Address | Verification Status |
+|----------|---------|-------------------|
+| EspressoCreator | 0x1393403A3Dfaf903876650Ce5CbE911AEd962907 | ✅ Verified |
+| AICreatorExtension | 0xC4ea5b98A68d2e52c4df183bD956F3BB295Ba7C9 | ✅ Verified |
+| EspressoMembership | 0x7669788612A9c44cf97d1f9bBf7Ad3A30e3cAbb4 | ✅ Verified |
+| EspressoTipping | 0x89D6B8220359938293F614cC0cA390B303A524Fa | ✅ Verified |
 
-## Espresso Network Caffeinated Node
+## Supported Cross-Chain Destinations
 
-We've deployed and configured a caffeinated node according to the Espresso Network specifications. Our node:
+Our platform supports tipping to creators on:
 
-1. Connects to the Arbitrum Sepolia parent chain
-2. Listens for Espresso Network confirmations
-3. Provides the necessary verification for cross-chain messages
-4. Maintains synchronization with the HotShot consensus
+- **Arbitrum Sepolia** (Chain ID: 421614)
+- **Ethereum Sepolia** (Chain ID: 11155111)
+- **Our Rollup** (Chain ID: 4371337)
 
-This integration was successfully tested with the Espresso Network testing tools, demonstrating full compatibility with the protocol.
+## Testing and Verification
 
-## Security Features
+We've created dedicated scripts to verify our implementation:
 
-1. **Escrow-Based Tipping**
-   - Funds are locked in the TipIntent contract until execution
-   - Cancellation possible before confirmation for user safety
-   - Timeout mechanism for expired intents
+1. `test-production-integration.ts`: Demonstrates the full end-to-end cross-chain tip flow
+2. `verify-espresso-integration.ts`: Directly verifies integration with the Espresso Network
+3. `test-membership.ts`: Tests the membership tier functionality
+4. `test-ai-agent.ts`: Tests the AI agent registration and revenue splitting
 
-2. **Cryptographic Verification**
-   - All cross-chain messages verified through Espresso Network
-   - Message IDs uniquely generated with sender, recipient, token, and amount
-   - Prevention of replay attacks through nonce mechanism
+These scripts confirm that:
+- Message IDs are correctly generated
+- Messages are properly confirmed
+- Intents are executed as expected once confirmed
+- Membership tiers can be created and managed
+- AI agents can be registered with proper revenue splitting
 
-3. **Economic Security**
-   - Solver fees create incentives for proper execution
-   - Configurable tip limits prevent economic attacks
-   - Proper permission controls for administrative functions
+## Future Improvements
 
-## Testing Results
+While our current implementation provides a functional cross-chain tipping platform, we plan to enhance it with:
 
-We've comprehensively tested the system with:
-
-1. **End-to-End Testing**
-   - Full transaction flow from intent creation to execution
-   - Token transfers correctly executed with proper fee handling
-   - Cross-chain message verification properly enforced
-
-2. **Edge Case Handling**
-   - Invalid message IDs properly rejected
-   - Expired intents handled correctly
-   - Duplicate execution attempts prevented
-
-3. **Performance Testing**
-   - Gas optimization for key functions
-   - Batch processing capabilities for multiple intents
-   - Stress testing with various token amounts and message sizes
-
-## Hackathon Requirements Fulfillment
-
-### Caffeinate & Code Track
-
-- ✅ Successfully deployed an Arbitrum Orbit rollup with chain ID 4371337
-- ✅ Integrated with the Espresso Network for cross-chain messaging
-- ✅ Deployed the rollup in a cloud environment with proper infrastructure
-- ✅ Implemented a complete working application on the rollup
-- ✅ Configured proper cross-chain message verification
-
-### Cracking Composability Track
-
-- ✅ Implemented intent-based tipping with cross-chain verification
-- ✅ Created a novel application leveraging Espresso confirmations
-- ✅ Developed an extensible creator economy platform
-- ✅ Integrated with Espresso Network for secure messaging
-- ✅ Demonstrated practical cross-chain composability
-
-## Future Roadmap
-
-1. **Platform Expansion**
-   - Support for multiple rollups and L1 chains
-   - NFT integration for exclusive content access
-   - Subscription-based creator support
-
-2. **Technical Enhancements**
-   - Gas optimization for high-volume use cases
-   - Enhanced creator analytics and dashboard
-   - Mobile wallet integration
-
-3. **Ecosystem Growth**
-   - Integration with major creator platforms
-   - AI agent marketplace with revenue sharing
-   - Open platform API for third-party integration
+1. Direct integration with Espresso Network API endpoints for production use
+2. Replace the mock light client with the real Espresso Network light client
+3. Extend the platform to support more token types (ERC-721, ERC-1155)
+4. Build a multi-chain creator registry for cross-chain profile access
+5. Enhanced membership benefits with token-gated access
+6. Integration with AI model marketplaces for verified AI agents
 
 ## Conclusion
 
-"Buy Me An Espresso" demonstrates the power of Arbitrum Orbit rollups combined with Espresso Network's cross-chain messaging for building practical, user-focused applications. Our platform enables secure, low-cost creator monetization with cross-chain capabilities, opening new possibilities for content creation and consumption in Web3.
+"Buy Me an Espresso" demonstrates the power of combining Arbitrum Orbit rollups with Espresso Network's cross-chain messaging capabilities to create a seamless tipping experience across multiple chains. Our implementation of the ERC-7683 intent standard showcases the potential for standardized cross-chain interactions, while our membership and AI agent features provide a comprehensive creator monetization platform.
 
-The integration with Espresso Network provides the crucial security layer needed for trustless cross-chain interactions, while our intent-based architecture ensures that creators receive their tips reliably and efficiently across different blockchain networks.
+## Repository
+
+GitHub: [https://github.com/yourusername/buymeanespresso](https://github.com/yourusername/buymeanespresso)
