@@ -271,4 +271,4 @@ The architecture supports several possible extensions:
 
 ## Conclusion
 
-The Buy Me An Espresso platform demonstrates a secure, efficient implementation of cross-chain tipping using Arbitrum Orbit and Espresso Network. The architecture prioritizes security, usability, and extensibility while maintaining gas efficiency and cross-chain compatibility. 
+The Buy Me An Espresso platform demonstrates a secure, efficient implementation of cross-chain tipping using Arbitrum Orbit and Espresso Network. The architecture prioritizes security, usability, and extensibility while maintaining gas efficiency and cross-chain compatibility.

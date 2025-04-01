@@ -40,12 +40,14 @@ The integration is built around the `HotShotVerifier` contract, which connects t
 We've implemented an intent-based architecture based on ERC-7683 principles for cross-chain tipping, consisting of:
 
 #### `TipIntent` Contract
+
 - Creates and stores tip intents from users
 - Manages intent lifecycle (creation, execution, cancellation)
 - Handles token transfers and escrow
 - Integrates with the Espresso Network for cross-chain verification
 
 #### `IntentSolver` Contract
+
 - Executes verified tip intents
 - Distributes funds to creators with a small solver fee
 - Enforces verification through HotShot before execution
@@ -54,6 +56,7 @@ We've implemented an intent-based architecture based on ERC-7683 principles for 
 ### 3. Creator Ecosystem
 
 The `EspressoCreatorRegistry` contract manages creator profiles, including:
+
 - Username registration and verification
 - Profile metadata (bio, avatar, social links)
 - Extension system for AI agents and special creator types
@@ -62,6 +65,7 @@ The `EspressoCreatorRegistry` contract manages creator profiles, including:
 ### 4. Testing Infrastructure
 
 For development and testing, we've implemented:
+
 - `MockERC20`: Testing token with mint functionality
 - `MockHotShotVerifier`: Simulation of Espresso Network's HotShot verification
 
@@ -102,7 +106,7 @@ function solveIntent(bytes32 intentId, bytes32 messageId) external nonReentrant 
 We've deployed and configured a caffeinated node according to the Espresso Network specifications. Our node:
 
 1. Connects to the Arbitrum Sepolia parent chain
-2. Listens for Espresso Network confirmations 
+2. Listens for Espresso Network confirmations
 3. Provides the necessary verification for cross-chain messages
 4. Maintains synchronization with the HotShot consensus
 
@@ -147,6 +151,7 @@ We've comprehensively tested the system with:
 ## Hackathon Requirements Fulfillment
 
 ### Caffeinate & Code Track
+
 - ✅ Successfully deployed an Arbitrum Orbit rollup with chain ID 4371337
 - ✅ Integrated with the Espresso Network for cross-chain messaging
 - ✅ Deployed the rollup in a cloud environment with proper infrastructure
@@ -154,6 +159,7 @@ We've comprehensively tested the system with:
 - ✅ Configured proper cross-chain message verification
 
 ### Cracking Composability Track
+
 - ✅ Implemented intent-based tipping with cross-chain verification
 - ✅ Created a novel application leveraging Espresso confirmations
 - ✅ Developed an extensible creator economy platform

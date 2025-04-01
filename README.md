@@ -4,7 +4,7 @@ A decentralized tipping platform built on top of Arbitrum Orbit and Espresso Net
 
 ## Overview
 
-"Buy Me An Espresso" is a web3 platform that allows users to tip content creators with tokens. The platform uses:
+"Buy Me An Espresso" is a web3 platform that allows users to tip content creators and AI agents with tokens. The platform uses:
 
 - **Arbitrum Orbit Rollup**: A custom L2 rollup for low-cost transactions
 - **Espresso Network**: For cross-chain messaging and intent verification
@@ -94,6 +94,3 @@ The frontend for this platform should interact with these contracts to:
 3. Show tip history and status
 4. Connect to the Espresso Network for cross-chain messaging
 
-## License
-
-MIT
