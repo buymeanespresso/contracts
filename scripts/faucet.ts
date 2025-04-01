@@ -7,9 +7,9 @@ dotenv.config();
 // Configuration
 const CONFIG = {
   rollupRpcUrl: process.env.ROLLUP_RPC_URL || "http://34.31.168.162:8547",
-  mockERC20Address: "0x1393403A3Dfaf903876650Ce5CbE911AEd962907", // MockERC20 contract address
+  mockERC20Address: "0xF8BB532Db32B681cD813d9f7d7606083984c7739", // MockERC20 contract address
   recipient: process.env.RECIPIENT || "0x9Ac44C807FfcAf3e150e184a06a660EaE5b848C8",
-  amount: process.env.AMOUNT || "10",
+  amount: process.env.AMOUNT || "100000000000000000000",
 };
 
 /**

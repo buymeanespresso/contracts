@@ -1,0 +1,7 @@
+{
+  "mockERC20": "0xF8BB532Db32B681cD813d9f7d7606083984c7739",
+  "tipIntent": "0x271b96Cf80758FdB97246c8CF94Dc325B77c8cE8",
+  "intentSolver": "0x2AB4b67f0f1f4c680EC8C11b479D26b1346c3bC2",
+  "hotShotVerifier": "0x6141dD10feDd8E124f70DcA9E680617E11EA94F5",
+  "comment": "These are example addresses. In production, please replace with the actual deployed contract addresses on your network."
+} 
