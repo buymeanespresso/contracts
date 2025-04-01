@@ -162,6 +162,8 @@ These scripts confirm that:
 - Membership tiers can be created and managed
 - AI agents can be registered with proper revenue splitting
 
+For a detailed list of all verified contracts, test results, and known limitations, see our [Verified Contracts](./lts_verified_contracts.md) document.
+
 ## Future Improvements
 
 While our current implementation provides a functional cross-chain tipping platform, we plan to enhance it with:

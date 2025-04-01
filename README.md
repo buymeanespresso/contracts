@@ -143,6 +143,10 @@ await aiExtensionContract.registerAsAgent(
 - Bun package manager
 - MetaMask or another Ethereum wallet
 
+### Verified Contracts
+
+All core contracts have been verified and are considered stable for production use. For a detailed list of verified contracts, testing details, and known limitations, see the [Verified Contracts](./lts_verified_contracts.md) document.
+
 ### Installation
 
 1. Clone the repository:
