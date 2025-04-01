@@ -64,6 +64,8 @@ The platform implements a direct contract-based cross-chain messaging flow:
 3. The message is confirmed through the HotShotVerifier
 4. Once confirmed, the intent solver executes the tip on the destination chain
 
+For a detailed, production-ready implementation guide with complete code examples, see our [Cross-Chain User Flow](./cross-chain-user-flow.md) document.
+
 ```typescript
 // Generate message ID
 const messageId = await hotShotVerifier.generateMessageId(
@@ -215,13 +217,16 @@ For testing purposes, we've provided a pre-funded wallet:
 5. Enhanced membership benefits with token-gated access
 6. Advanced AI agent capabilities with on-chain verification
 
-## License
-
-MIT License
-
 ## Acknowledgements
 
 - Arbitrum for the Orbit rollup infrastructure
 - Espresso Network for the cross-chain messaging solution
 - Open Intents Framework (ERC-7683) for the intents standard
+
+## Documentation
+
+- [Contract Endpoints](./contract-endpoints.md) - Detailed API specifications for all contracts
+- [Verified Contracts](./lts_verified_contracts.md) - List of verified contracts with test results
+- [Cross-Chain User Flow](./cross-chain-user-flow.md) - Production integration guide with code examples
+- [Contract Services](./contract-services.md) - Backend services implementation for cross-chain messaging
 

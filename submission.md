@@ -68,6 +68,8 @@ The cross-chain messaging flow uses the following sequence:
    intentSolver.solveIntent(intentId, messageId);
    ```
 
+For frontend and backend developers, we've created a comprehensive [Cross-Chain User Flow](./cross-chain-user-flow.md) guide that provides a detailed, production-ready implementation with full code examples. This ensures seamless integration with our contracts and a 100% functional cross-chain tipping experience.
+
 ### Creator Membership System
 
 We've implemented a robust membership system that allows creators to monetize through subscriptions:
