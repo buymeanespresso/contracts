@@ -153,7 +153,7 @@ All core contracts have been verified and are considered stable for production u
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/buymeanespresso-contract.git
+git clone https://github.com/buymeanespresso-contract.git
 cd buymeanespresso-contract
 ```
 

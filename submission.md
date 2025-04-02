@@ -12,7 +12,7 @@ Beyond cross-chain tipping, our platform includes advanced features like members
 - **Server IP**: 34.31.168.162
 - **RPC URL**: http://34.31.168.162:8547
 - **Namespace**: espresso-hackathon
-- **CreateRollup Transaction Hash**: 0x123456789abcdef
+- **CreateRollup Transaction Hash**: `0x6e4f52269E90A7029Adc1B93827e984ffA8Fa1FF`
 
 ## Espresso Network Integration
 
@@ -183,4 +183,4 @@ While our current implementation provides a functional cross-chain tipping platf
 
 ## Repository
 
-GitHub: [https://github.com/yourusername/buymeanespresso](https://github.com/yourusername/buymeanespresso)
+GitHub: [https://github.com/buymeanespresso](https://github.com/buymeanespresso)
